@@ -1,0 +1,8 @@
+services:
+  explorer:
+    build: .
+    image: quant-explorer:local
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
+    command: ["pipeline", "--tiny"]
