@@ -129,4 +129,7 @@ jobs:
         run: docker build -t quant-explorer:ci .
       - name: Smoke run inside container
         run: |
-          docker run --rm quant-explorer:ci python -c "from quant_explorer.cli import main; print('ok')"
+          # ENTRYPOINT is `quant-explorer`; --help is the safe smoke arg.
+          docker run --rm quant-explorer:ci --help | grep -q "Quant-explorer CLI"
+          # Override entrypoint to confirm the package imports cleanly.
+          docker run --rm --entrypoint python quant-explorer:ci -c "from quant_explorer.cli import main; print('ok')"
