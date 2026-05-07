@@ -1,0 +1,132 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff==0.4.10 black==24.4.2
+      - name: Ruff
+        run: ruff check src tests
+      - name: Black
+        run: black --check src tests
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Mypy
+        run: mypy src/quant_explorer
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Unit tests
+        run: pytest tests/unit -v
+
+  integration-tiny:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Cache CIFAR-10 dataset
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: cifar10-${{ hashFiles('src/quant_explorer/data.py') }}
+          restore-keys: cifar10-
+      - name: Tiny pipeline
+        env:
+          RUN_INTEGRATION: "1"
+        run: pytest tests/integration -v
+
+  bench-smoke:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Bench fp32_baseline (loads committed weights)
+        run: |
+          quant-explorer bench --config fp32_baseline --warmup 2 --iters 20
+      - name: Validate result JSON shape
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("artifacts/results/fp32_baseline.json")
+          assert p.exists(), p
+          data = json.loads(p.read_text())
+          assert "size" in data
+          assert "latency" in data and len(data["latency"]) > 0
+          assert "memory" in data
+          for lat in data["latency"]:
+              assert {"batch_size", "p50_ms", "p95_ms", "p99_ms"}.issubset(lat)
+          print("ok")
+          PY
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t quant-explorer:ci .
+      - name: Smoke run inside container
+        run: |
+          docker run --rm quant-explorer:ci python -c "from quant_explorer.cli import main; print('ok')"
