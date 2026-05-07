@@ -1,0 +1,59 @@
+{
+  "accuracy": {
+    "n_samples": 10000,
+    "per_class": {
+      "airplane": 0.868,
+      "automobile": 0.923,
+      "bird": 0.749,
+      "cat": 0.719,
+      "deer": 0.811,
+      "dog": 0.691,
+      "frog": 0.841,
+      "horse": 0.838,
+      "ship": 0.887,
+      "truck": 0.873
+    },
+    "top1": 0.82,
+    "top5": 0.9914
+  },
+  "config": "static_int8_per_channel",
+  "latency": [
+    {
+      "batch_size": 1,
+      "mean_ms": 0.620295429835096,
+      "n_measure": 200,
+      "n_warmup": 10,
+      "p50_ms": 0.615104494499974,
+      "p95_ms": 0.6688735433272086,
+      "p99_ms": 0.7041790796210985
+    },
+    {
+      "batch_size": 8,
+      "mean_ms": 2.833779601351125,
+      "n_measure": 200,
+      "n_warmup": 10,
+      "p50_ms": 2.66297951748129,
+      "p95_ms": 4.323974400176665,
+      "p99_ms": 5.771791346196544
+    },
+    {
+      "batch_size": 32,
+      "mean_ms": 9.430003340530675,
+      "n_measure": 200,
+      "n_warmup": 10,
+      "p50_ms": 9.374771019793116,
+      "p95_ms": 10.704031265049707,
+      "p99_ms": 11.812577518576287
+    }
+  ],
+  "memory": {
+    "rss_baseline_mb": 622.3125,
+    "rss_delta_mb": 0.0,
+    "rss_peak_mb": 622.3125,
+    "tracemalloc_peak_mb": 0.007997512817382812
+  },
+  "size": {
+    "bytes": 311634,
+    "kb": 304.330078125
+  }
+}
