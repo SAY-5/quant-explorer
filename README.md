@@ -27,14 +27,15 @@ Below are the numbers from a real run on a 4-core Apple M-series CPU
 
 | config | size_kb | size_ratio | p50_lat_ms_b1 | latency_speedup | top1_acc | acc_drop_pp | mem_peak_mb | pareto_optimal |
 |---|---:|---:|---:|---:|---:|---:|---:|:---:|
-| fp32_baseline | 1144 | 1.00x | 1.67 | 1.00x | 82.3% | 0.0pp | 585.8 | yes |
+| fp32_baseline | 1144 | 1.00x | 1.67 | 1.00x | 82.3% | 0.0pp | 585.8 | no |
 | dynamic_int8 | 1141 | 1.00x | 0.70 | 2.38x | 82.3% | -0.0pp | 280.2 | yes |
 | static_int8_per_tensor | 293 | 0.26x | 0.67 | 2.51x | 82.1% | -0.2pp | 642.3 | yes |
 | static_int8_per_channel | 304 | 0.27x | 0.62 | 2.72x | 82.0% | -0.3pp | 622.3 | yes |
+| qat_int8 | 293 | 0.26x | 0.94 | 1.78x | 82.4% | +0.1pp | 222.8 | yes |
 
 Pareto frontier picks:
-- minimum size: `static_int8_per_tensor` (0.26x of FP32)
-- highest accuracy: `fp32_baseline` (top-1 82.3%)
+- minimum size: `qat_int8` (0.26x of FP32)
+- highest accuracy: `qat_int8` (top-1 82.4%, slightly above FP32)
 - lowest latency: `static_int8_per_channel` (p50 0.62ms at batch 1)
 
 What this says: **static INT8 quantization (per-channel) cuts model
@@ -44,6 +45,13 @@ still gets a meaningful 2.4x speedup with essentially zero accuracy
 loss because it leaves the conv layers in FP32. Per-tensor static is
 slightly smaller than per-channel and the accuracy gap is modest at
 this scale; on bigger models the per-channel advantage usually grows.
+
+**QAT (quantization-aware training)** closes the accuracy gap from
+PTQ entirely on this network and even slightly exceeds the FP32
+baseline (+0.07pp), at the cost of 1 epoch of fine-tuning. The
+converted INT8 graph from QAT is the same size as PTQ per-tensor but
+its p50 latency lands between FP32 and PTQ static — slightly slower
+than PTQ on this CPU. See [QAT vs PTQ](#qat-vs-ptq) below.
 
 Full per-config measurements (latency at batch sizes 1, 8, 32; memory;
 per-class accuracy) live in
@@ -155,11 +163,40 @@ Detail: [`docs/quantization.md`](docs/quantization.md).
 Bench discipline: [`docs/methodology.md`](docs/methodology.md).
 Adding a new config: [`docs/README.md`](docs/README.md).
 
+## QAT vs PTQ
+
+[`quant_explorer.quant.qat`](src/quant_explorer/quant/qat.py) implements
+quantization-aware training: prepare the model with fake-quant ops
+inserted, fine-tune for one epoch at a small learning rate, then convert
+to a real INT8 graph. The `quant-explorer qat-finetune` CLI command
+runs this pipeline starting from `fp32_baseline.pt` and writes
+`artifacts/weights/qat_int8.pt`.
+
+Measured comparison on the full CIFAR-10 test set (10k images):
+
+| variant | top1 | acc delta vs FP32 | size_kb | p50_b1 |
+|---|---:|---:|---:|---:|
+| fp32_baseline | 82.34% | 0.0pp | 1144 | 1.67ms |
+| static_int8_per_channel (PTQ) | 82.00% | -0.34pp | 304 | 0.62ms |
+| **qat_int8 (1 epoch fine-tune)** | **82.41%** | **+0.07pp** | 293 | 0.94ms |
+
+What this says: on this small CNN, **QAT recovers the entire
+accuracy drop from static PTQ** and lands fractionally above the FP32
+baseline (the fake-quant noise during training acts as a mild
+regulariser). The cost is a few minutes of fine-tuning. PTQ remains
+the right answer when retraining isn't an option (no labelled data,
+no pipeline, or the trained model is a black box); QAT is the right
+answer when you control the training pipeline and care about every
+fraction of a point of accuracy.
+
+Honest caveat: this is a small, well-behaved network where PTQ already
+gets to within 0.34pp of FP32. QAT's relative win usually grows with
+network size and quantization aggressiveness — INT4 weight-only QAT
+on a transformer can recover several percentage points where PTQ falls
+off a cliff.
+
 ## What this is not
 
-- **Not QAT.** Quantization-aware training inserts fake-quant ops
-  during fine-tuning. It usually beats PTQ but takes another training
-  run. Documented as future work.
 - **Not INT4 / INT2.** PyTorch's CPU backends don't have first-class
   kernels for sub-INT8 weights. INT4 lives in different stacks
   (bitsandbytes for GPU, GGML, ONNX-Runtime).

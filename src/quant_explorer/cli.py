@@ -18,9 +18,15 @@ from .bench.latency import benchmark_latency
 from .bench.memory import benchmark_memory
 from .bench.multi_model import bench_grid, emit_multi_model_results
 from .bench.size import file_size
-from .data import get_calibration_loader, get_test_loader, iter_calibration_batches
+from .data import (
+    get_calibration_loader,
+    get_test_loader,
+    get_train_loader,
+    iter_calibration_batches,
+)
 from .eval.accuracy import evaluate_accuracy
 from .model import CifarCNN
+from .quant.qat import build_qat_for_eval, run_qat_finetune
 from .report.json_emit import emit_full_results
 from .report.pareto import render_pareto_markdown
 from .settings import (
@@ -37,7 +43,13 @@ from .settings import (
 )
 from .train import train_model
 
-ALL_CONFIGS = ("fp32_baseline", "dynamic_int8", "static_int8_per_tensor", "static_int8_per_channel")
+ALL_CONFIGS = (
+    "fp32_baseline",
+    "dynamic_int8",
+    "static_int8_per_tensor",
+    "static_int8_per_channel",
+    "qat_int8",
+)
 
 
 def _set_quant_engine() -> str:
@@ -69,9 +81,25 @@ def _load_baseline_model() -> nn.Module:
 def _build_quantized_model(
     name: str, *, calibration_n: int = 256, batch_size: int = 32
 ) -> nn.Module:
-    """Apply the named quant config to a fresh copy of the baseline."""
+    """Apply the named quant config to a fresh copy of the baseline.
+
+    Special-cased configs:
+      * ``fp32_baseline``: just load the FP32 weights.
+      * ``qat_int8``: rebuild the QAT-converted graph from the baseline
+        weights (the QAT-finetuned weights live in ``qat_int8.pt`` but the
+        prepare-then-convert structural transform is regenerated here so
+        the converted state_dict's keys can be loaded). See
+        ``quant_explorer.quant.qat`` for the full pipeline.
+    """
     if name == "fp32_baseline":
         return _load_baseline_model()
+    if name == "qat_int8":
+        # Build the converted graph and then load the QAT state_dict on top.
+        model = build_qat_for_eval(baseline_path=_baseline_path())
+        qat_path = _quantized_path("qat_int8")
+        if qat_path.exists():
+            model.load_state_dict(torch.load(qat_path, map_location="cpu"))
+        return model
     cfg = quant_pkg.get_config(name)
     base = _load_baseline_model()
     if cfg.needs_calibration:
@@ -258,6 +286,39 @@ def report() -> None:
     pareto_path.write_text(md, encoding="utf-8")
     click.echo(f"wrote {full_path}")
     click.echo(f"wrote {pareto_path}")
+
+
+@main.command("qat-finetune")
+@click.option("--epochs", type=int, default=1, show_default=True)
+@click.option("--batch-size", type=int, default=128, show_default=True)
+@click.option("--lr", type=float, default=1e-4, show_default=True)
+@click.option(
+    "--train-subset",
+    type=int,
+    default=None,
+    help="Use only the first N training images (faster, for tiny / CI runs).",
+)
+def qat_finetune(epochs: int, batch_size: int, lr: float, train_subset: int | None) -> None:
+    """Run QAT fine-tuning starting from the FP32 baseline.
+
+    Saves the converted (real INT8) state_dict to
+    ``artifacts/weights/qat_int8.pt``. The CLI ``evaluate --config qat_int8``
+    + ``bench --config qat_int8`` pick up that file the same way the PTQ
+    configs do.
+    """
+    ensure_dirs()
+    _set_quant_engine()
+    train_loader = get_train_loader(DATA_DIR, batch_size=batch_size, subset_size=train_subset)
+    out_path = _quantized_path("qat_int8")
+    info = run_qat_finetune(
+        baseline_path=_baseline_path(),
+        out_path=out_path,
+        train_loader=train_loader,
+        epochs=epochs,
+        lr=lr,
+    )
+    click.echo(f"saved QAT state_dict to {out_path}")
+    click.echo(json.dumps(info, indent=2, default=str))
 
 
 @main.command("multi-bench")
