@@ -120,6 +120,25 @@ jobs:
           print("ok")
           PY
 
+  multi-bench-regress:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Run multi-model bench (random init, no accuracy)
+        run: quant-explorer multi-bench --warmup 1 --iters 5
+      - name: Bench-regress structural gate
+        run: python scripts/bench_regress_check.py
+
   build:
     runs-on: ubuntu-latest
     needs: [test]

@@ -1,0 +1,184 @@
+{
+  "cells": [
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 9.84053072752431,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 8.117166988085955,
+        "p95_ms": 24.503471300704398,
+        "p99_ms": 27.3027942457702
+      },
+      "model": "small_cnn",
+      "quant_config": "fp32_baseline",
+      "size_kb": 1143.57421875
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 13.924069337857267,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 12.275208020582795,
+        "p95_ms": 35.985329607501626,
+        "p99_ms": 36.50573309510946
+      },
+      "model": "small_cnn",
+      "quant_config": "dynamic_int8",
+      "size_kb": 1140.513671875
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 1.9139998708851635,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 1.6880829934962094,
+        "p95_ms": 2.968725189566612,
+        "p99_ms": 3.2510122563689947
+      },
+      "model": "small_cnn",
+      "quant_config": "static_int8_per_tensor",
+      "size_kb": 292.87890625
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 1.798172128231575,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 1.8248329870402813,
+        "p95_ms": 2.230891067301854,
+        "p99_ms": 2.358944582520053
+      },
+      "model": "small_cnn",
+      "quant_config": "static_int8_per_channel",
+      "size_kb": 303.705078125
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 1374.9675666719365,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 1279.4786249869503,
+        "p95_ms": 2226.590325008146,
+        "p99_ms": 2416.2729650037363
+      },
+      "model": "mobilenet_v3",
+      "quant_config": "fp32_baseline",
+      "size_kb": 21621.611328125
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 853.3226861269213,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 649.5982499909587,
+        "p95_ms": 1655.0389044103208,
+        "p99_ms": 1793.4729808499103
+      },
+      "model": "mobilenet_v3",
+      "quant_config": "dynamic_int8",
+      "size_kb": 14273.056640625
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 27.661183336749673,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 26.098666014149785,
+        "p95_ms": 41.72647501109167,
+        "p99_ms": 45.20029502687975
+      },
+      "model": "mobilenet_v3",
+      "quant_config": "static_int8_per_tensor",
+      "size_kb": 5519.865234375
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 22.989924931122612,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 22.62612502090633,
+        "p95_ms": 28.37774999788962,
+        "p99_ms": 29.577549974201247
+      },
+      "model": "mobilenet_v3",
+      "quant_config": "static_int8_per_channel",
+      "size_kb": 5519.865234375
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 82.39701105824982,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 81.61791699239984,
+        "p95_ms": 99.81317130150273,
+        "p99_ms": 99.91693428950384
+      },
+      "model": "vgg11_bn",
+      "quant_config": "fp32_baseline",
+      "size_kb": 519060.59765625
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 92.80775819982712,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 89.76612496189773,
+        "p95_ms": 133.13339189626276,
+        "p99_ms": 133.3498783968389
+      },
+      "model": "vgg11_bn",
+      "quant_config": "dynamic_int8",
+      "size_kb": 156854.791015625
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 132.18136666109785,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 132.6022919965908,
+        "p95_ms": 163.88519571628422,
+        "p99_ms": 164.40877271350473
+      },
+      "model": "vgg11_bn",
+      "quant_config": "static_int8_per_tensor",
+      "size_kb": 129800.33203125
+    },
+    {
+      "accuracy_top1": null,
+      "latency": {
+        "batch_size": 1,
+        "mean_ms": 194.74825273112705,
+        "n_measure": 15,
+        "n_warmup": 2,
+        "p50_ms": 149.02929199161008,
+        "p95_ms": 426.9025375251657,
+        "p99_ms": 490.7594075077213
+      },
+      "model": "vgg11_bn",
+      "quant_config": "static_int8_per_channel",
+      "size_kb": 129992.603515625
+    }
+  ]
+}

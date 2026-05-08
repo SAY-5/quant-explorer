@@ -49,6 +49,49 @@ Full per-config measurements (latency at batch sizes 1, 8, 32; memory;
 per-class accuracy) live in
 [`artifacts/results/full_results.json`](artifacts/results/full_results.json).
 
+## Multi-model bench
+
+The same 4 quant configs applied to two larger torchvision networks
+gives a 12-cell grid (3 models x 4 configs). Latency + on-disk size are
+measured for every cell; **top-1 accuracy is only measured for
+`small_cnn`** because it's the only model trained on CIFAR-10 — the
+torchvision models are random-init at 224x224 inputs (a different
+domain). Within-model frontier picks live in
+[`artifacts/results/multi_pareto.md`](artifacts/results/multi_pareto.md);
+representative numbers from a recent run on a 4-core M-series CPU:
+
+| model | quant_config | size_kb | size_ratio | p50_ms (b=1) | top1 |
+|---|---|---:|---:|---:|---:|
+| small_cnn | fp32_baseline | 1144 | 1.00x | 8.12 | (see single-model table) |
+| small_cnn | static_int8_per_tensor | 293 | 0.26x | 1.69 | (see single-model table) |
+| mobilenet_v3 | fp32_baseline | 21622 | 1.00x | 1279.5 | n/a |
+| mobilenet_v3 | static_int8_per_channel | 5520 | 0.26x | 22.6 | n/a |
+| vgg11_bn | fp32_baseline | 519061 | 1.00x | 81.6 | n/a |
+| vgg11_bn | static_int8_per_tensor | 129800 | 0.25x | 132.6 | n/a |
+
+Read the full 12-cell table in
+[`multi_pareto.md`](artifacts/results/multi_pareto.md). Two honest
+caveats with this grid:
+
+- **VGG11 INT8 is slower than its FP32 baseline in this measurement**
+  (~0.5x speedup). VGG11 has no Conv-BN-ReLU runs that *don't* fuse,
+  so static-INT8 should be faster — but qnnpack on random-init weights
+  produces extreme activations and triggers fallbacks, and on macOS the
+  CPU GEMM kernels for INT8 large convolutions are mature on x86 but
+  not on Apple Silicon. The size shrink (4x) is real and structural;
+  the latency speedup isn't transferable from this measurement.
+- **MobileNetV3 shows the largest INT8 speedup** (50x+) — but the
+  baseline is also slow on random init because depthwise convs hit
+  unoptimised paths. The INT8 speedup vs FP32 is genuine but should
+  not be read as a deployment number.
+
+The CI `multi-bench-regress` job re-runs this grid on every push and
+asserts a structural invariant: **every static-INT8 cell must be
+<= 50% of its model's FP32 size**. This catches regressions in the
+quantization converter (e.g. a layer silently keeping FP32 weights)
+without depending on noisy absolute latency numbers. See
+[`scripts/bench_regress_check.py`](scripts/bench_regress_check.py).
+
 ## Quickstart
 
 ```bash

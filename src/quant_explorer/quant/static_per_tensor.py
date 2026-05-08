@@ -33,12 +33,16 @@ def _apply(model: nn.Module, calibration: Iterable[torch.Tensor] | None) -> nn.M
     if hasattr(model, "fuse_modules"):
         model.fuse_modules()
 
-    # Per-tensor weight + activation observers.
-    qcfg = QConfig(  # type: ignore[no-untyped-call]
-        activation=default_observer,
-        weight=default_weight_observer,
-    )
-    model.qconfig = qcfg  # type: ignore[assignment]
+    # Per-tensor weight + activation observers. If the model already has a
+    # qconfig set (some torchvision quantizable models prefer
+    # engine-specific configs), respect it; otherwise use the per-tensor
+    # default.
+    if getattr(model, "qconfig", None) is None:
+        qcfg = QConfig(  # type: ignore[no-untyped-call]
+            activation=default_observer,
+            weight=default_weight_observer,
+        )
+        model.qconfig = qcfg  # type: ignore[assignment]
     prepared = prepare(model, inplace=False)  # type: ignore[no-untyped-call]
 
     n_batches = 0

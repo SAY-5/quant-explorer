@@ -16,6 +16,7 @@ from torch import nn
 from . import quant as quant_pkg
 from .bench.latency import benchmark_latency
 from .bench.memory import benchmark_memory
+from .bench.multi_model import bench_grid, emit_multi_model_results
 from .bench.size import file_size
 from .data import get_calibration_loader, get_test_loader, iter_calibration_batches
 from .eval.accuracy import evaluate_accuracy
@@ -257,6 +258,84 @@ def report() -> None:
     pareto_path.write_text(md, encoding="utf-8")
     click.echo(f"wrote {full_path}")
     click.echo(f"wrote {pareto_path}")
+
+
+@main.command("multi-bench")
+@click.option("--warmup", type=int, default=2, show_default=True)
+@click.option("--iters", type=int, default=20, show_default=True)
+@click.option(
+    "--bench-batch-size",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Batch size for the latency measurement.",
+)
+@click.option(
+    "--measure-accuracy/--no-measure-accuracy",
+    default=False,
+    show_default=True,
+    help=(
+        "If set, run CIFAR-10 top-1 accuracy on small_cnn cells. Requires "
+        "the dataset to be present in ./data and the baseline weights in "
+        "artifacts/weights/fp32_baseline.pt."
+    ),
+)
+@click.option(
+    "--accuracy-subset",
+    type=int,
+    default=None,
+    help="Use only the first N test images for accuracy (faster, lower fidelity).",
+)
+def multi_bench(
+    warmup: int,
+    iters: int,
+    bench_batch_size: int,
+    measure_accuracy: bool,
+    accuracy_subset: int | None,
+) -> None:
+    """Bench every (model, quant_config) cell of the multi-model grid.
+
+    Outputs ``artifacts/results/multi_model.json`` and
+    ``artifacts/results/multi_pareto.md``. Accuracy is measured only for
+    ``small_cnn`` (the only model trained on CIFAR-10); for other models
+    the cell's top-1 is reported as ``n/a`` and explicitly labelled
+    "not measured" in the report.
+    """
+    ensure_dirs()
+    _set_quant_engine()
+
+    from collections.abc import Callable
+
+    from .models import ModelSpec
+
+    accuracy_fn: Callable[[nn.Module], float] | None = None
+    weight_loaders: dict[str, Callable[[ModelSpec], nn.Module]] | None = None
+    if measure_accuracy:
+        loader = get_test_loader(DATA_DIR, batch_size=128, subset_size=accuracy_subset)
+
+        def _accuracy(model: nn.Module) -> float:
+            return float(evaluate_accuracy(model, loader).top1)
+
+        accuracy_fn = _accuracy
+
+        # For accuracy to be meaningful on small_cnn we need the trained
+        # baseline weights — bench_grid otherwise hands the configs a
+        # randomly-initialised CifarCNN.
+        def _load_small_cnn_trained(_spec: ModelSpec) -> nn.Module:
+            return _load_baseline_model()
+
+        weight_loaders = {"small_cnn": _load_small_cnn_trained}
+
+    cells = bench_grid(
+        bench_batch_size=bench_batch_size,
+        n_warmup=warmup,
+        n_measure=iters,
+        accuracy_fn=accuracy_fn,
+        weight_loaders=weight_loaders,
+    )
+    json_path, md_path = emit_multi_model_results(cells, RESULTS_DIR)
+    click.echo(f"wrote {json_path}")
+    click.echo(f"wrote {md_path}")
 
 
 @main.command()

@@ -32,11 +32,12 @@ def _apply(model: nn.Module, calibration: Iterable[torch.Tensor] | None) -> nn.M
     if hasattr(model, "fuse_modules"):
         model.fuse_modules()
 
-    qcfg = QConfig(  # type: ignore[no-untyped-call]
-        activation=default_observer,
-        weight=default_per_channel_weight_observer,
-    )
-    model.qconfig = qcfg  # type: ignore[assignment]
+    if getattr(model, "qconfig", None) is None:
+        qcfg = QConfig(  # type: ignore[no-untyped-call]
+            activation=default_observer,
+            weight=default_per_channel_weight_observer,
+        )
+        model.qconfig = qcfg  # type: ignore[assignment]
     prepared = prepare(model, inplace=False)  # type: ignore[no-untyped-call]
 
     n_batches = 0
