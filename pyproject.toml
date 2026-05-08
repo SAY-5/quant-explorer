@@ -21,6 +21,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
     "ruff>=0.4",
     "black>=24.0",
     "mypy>=1.8",
@@ -66,3 +68,14 @@ addopts = "-q"
 markers = [
     "integration: end-to-end tests gated on RUN_INTEGRATION=1",
 ]
+
+[tool.coverage.run]
+source = ["src/quant_explorer"]
+branch = false
+
+[tool.coverage.report]
+# Coverage gate: pre-v1 baseline was 51%; v1 added Hypothesis property tests
+# for the Pareto frontier and per-class accuracy aggregator + auxiliary
+# round-trip tests, lifting overall coverage to ~59% (gate is +5pp = 56).
+fail_under = 56
+show_missing = false
