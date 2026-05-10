@@ -184,7 +184,7 @@ jobs:
         # above the typical PT-vs-ORT INT8 quantizer drift.
         run: |
           quant-explorer cross-runtime --accuracy-subset 2000 --calibration-n 128 --warmup 2 --iters 10
-      - name: Assert structural parity (CI gate: top-1 within +/-5pp, all configs)
+      - name: "Assert structural parity (CI gate: top-1 within +/-5pp, all configs)"
         # The headline parity claim in cross_runtime.md is +/-1pp, measured
         # on the full 10 000-image test split (a recent local M-series run
         # is committed). CI runs at 2000 samples on Linux fbgemm; that's a
