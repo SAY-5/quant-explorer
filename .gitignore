@@ -16,3 +16,6 @@ data/
 
 # OS
 .DS_Store
+
+# ORT shape-inference temp files (intermediate; the .onnx output is committed)
+artifacts/weights/onnx/*.preproc.onnx

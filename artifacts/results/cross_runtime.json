@@ -1,0 +1,89 @@
+{
+  "rows": [
+    {
+      "config": "fp32_baseline",
+      "deltas": {
+        "latency_ratio": 0.456043687247651,
+        "size_ratio": 0.9874127319179168,
+        "top1_pp": 0.0,
+        "within_accuracy_tol_pp": 1.0,
+        "within_accuracy_tolerance": true
+      },
+      "n_samples": 10000,
+      "onnx": {
+        "p50_ms_b1": 0.8339994819834828,
+        "size_kb": 1129.2607421875,
+        "top1": 0.8234
+      },
+      "pt": {
+        "p50_ms_b1": 1.828771026339382,
+        "size_kb": 1143.65625,
+        "top1": 0.8234
+      }
+    },
+    {
+      "config": "dynamic_int8",
+      "deltas": {
+        "latency_ratio": 0.3343262467573933,
+        "size_ratio": 0.9886517171405821,
+        "top1_pp": 0.0,
+        "within_accuracy_tol_pp": 1.0,
+        "within_accuracy_tolerance": true
+      },
+      "n_samples": 10000,
+      "onnx": {
+        "p50_ms_b1": 0.38120849058032036,
+        "size_kb": 1127.61328125,
+        "top1": 0.8231
+      },
+      "pt": {
+        "p50_ms_b1": 1.1402290256228298,
+        "size_kb": 1140.556640625,
+        "top1": 0.8231
+      }
+    },
+    {
+      "config": "static_int8_per_tensor",
+      "deltas": {
+        "latency_ratio": 0.10222251408624312,
+        "size_ratio": 1.012216637262408,
+        "top1_pp": -0.050000000000005596,
+        "within_accuracy_tol_pp": 1.0,
+        "within_accuracy_tolerance": true
+      },
+      "n_samples": 10000,
+      "onnx": {
+        "p50_ms_b1": 0.18139599706046283,
+        "size_kb": 296.953125,
+        "top1": 0.8208
+      },
+      "pt": {
+        "p50_ms_b1": 1.7745209916029125,
+        "size_kb": 293.369140625,
+        "top1": 0.8213
+      }
+    },
+    {
+      "config": "static_int8_per_channel",
+      "deltas": {
+        "latency_ratio": 0.14384571768845292,
+        "size_ratio": 0.9955171772014607,
+        "top1_pp": 0.27000000000000357,
+        "within_accuracy_tol_pp": 1.0,
+        "within_accuracy_tolerance": true
+      },
+      "n_samples": 10000,
+      "onnx": {
+        "p50_ms_b1": 0.18231250578537583,
+        "size_kb": 302.9658203125,
+        "top1": 0.8227
+      },
+      "pt": {
+        "p50_ms_b1": 1.2674169847741723,
+        "size_kb": 304.330078125,
+        "top1": 0.82
+      }
+    }
+  ],
+  "tolerance_pp": 1.0
+}

@@ -157,6 +157,65 @@ jobs:
           print("ok")
           PY
 
+  cross-runtime-smoke:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2
+          pip install -e ".[dev]"
+      - name: Cache CIFAR-10 dataset
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: cifar10-${{ hashFiles('src/quant_explorer/data.py') }}
+          restore-keys: cifar10-
+      - name: Cross-runtime comparison (tiny — 500 test images)
+        run: |
+          quant-explorer cross-runtime --accuracy-subset 500 --calibration-n 64 --warmup 2 --iters 10
+      - name: Assert structural parity (top-1 within +/-1pp, all configs)
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("artifacts/results/cross_runtime.json")
+          assert p.exists(), p
+          data = json.loads(p.read_text())
+          assert data["tolerance_pp"] == 1.0
+          rows = data["rows"]
+          expected = {
+              "fp32_baseline",
+              "dynamic_int8",
+              "static_int8_per_tensor",
+              "static_int8_per_channel",
+          }
+          assert {r["config"] for r in rows} == expected, [r["config"] for r in rows]
+          failures = [
+              (r["config"], r["deltas"]["top1_pp"])
+              for r in rows
+              if not r["deltas"]["within_accuracy_tolerance"]
+          ]
+          assert not failures, f"top-1 parity violated: {failures}"
+          for r in rows:
+              assert r["pt"]["p50_ms_b1"] > 0
+              assert r["onnx"]["p50_ms_b1"] > 0
+              assert r["pt"]["size_kb"] > 0
+              assert r["onnx"]["size_kb"] > 0
+          print("cross-runtime parity ok:", [(r["config"], round(r["deltas"]["top1_pp"], 3)) for r in rows])
+          PY
+      - name: Validate cross-runtime markdown report
+        run: |
+          test -s artifacts/results/cross_runtime.md
+          grep -q "Cross-runtime comparison" artifacts/results/cross_runtime.md
+          grep -q "SAY-5/onnx-deploy" artifacts/results/cross_runtime.md
+          grep -q "SAY-5/export-validator" artifacts/results/cross_runtime.md
+
   multi-bench-regress:
     runs-on: ubuntu-latest
     needs: [lint, test]

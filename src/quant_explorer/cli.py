@@ -1,6 +1,7 @@
 """Command-line interface for quant-explorer.
 
-Subcommands: train, quantize, bench, evaluate, report, pipeline.
+Subcommands: train, quantize, bench, evaluate, report, pipeline,
+qat-finetune, multi-bench, cross-runtime.
 """
 
 from __future__ import annotations
@@ -26,6 +27,15 @@ from .data import (
 )
 from .eval.accuracy import evaluate_accuracy
 from .model import CifarCNN
+from .onnx_rt import (
+    CROSS_RUNTIME_CONFIGS,
+    assemble_row,
+    build_cross_runtime_table,
+    build_onnx_artifacts,
+    measure_onnx_side,
+    measure_pytorch_side,
+    render_cross_runtime_markdown,
+)
 from .quant.qat import build_qat_for_eval, run_qat_finetune
 from .report.json_emit import emit_full_results
 from .report.pareto import render_pareto_markdown
@@ -462,6 +472,128 @@ def pipeline(tiny: bool, epochs: int) -> None:
     md = render_pareto_markdown(rows)
     (RESULTS_DIR / "pareto.md").write_text(md, encoding="utf-8")
     click.echo("pipeline done")
+
+
+@main.command("cross-runtime")
+@click.option(
+    "--config",
+    "config_names",
+    type=click.Choice(CROSS_RUNTIME_CONFIGS),
+    multiple=True,
+    help=(
+        "Restrict the comparison to the named configs (repeatable). "
+        "Defaults to all four PTQ configs."
+    ),
+)
+@click.option(
+    "--calibration-n",
+    type=int,
+    default=128,
+    show_default=True,
+    help="Number of training images used to calibrate the static-INT8 ONNX models.",
+)
+@click.option(
+    "--accuracy-subset",
+    type=int,
+    default=None,
+    help="Use only the first N test images for accuracy (faster, lower fidelity).",
+)
+@click.option(
+    "--warmup",
+    type=int,
+    default=5,
+    show_default=True,
+    help="Latency benchmark warmup iterations (each runtime).",
+)
+@click.option(
+    "--iters",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Latency benchmark measure iterations (each runtime).",
+)
+def cross_runtime(
+    config_names: tuple[str, ...],
+    calibration_n: int,
+    accuracy_subset: int | None,
+    warmup: int,
+    iters: int,
+) -> None:
+    """Compare PyTorch quantized inference vs ONNX Runtime quantized inference.
+
+    For each config the command exports the FP32 baseline to ONNX, then
+    derives the INT8 variant from that file (dynamic via
+    ``onnxruntime.quantization.quantize_dynamic``, static via
+    ``quantize_static`` with real CIFAR-10 calibration). Both runtimes
+    are then benched on the same test loader; the per-config rows are
+    written to ``artifacts/results/cross_runtime.{json,md}``. See
+    ``docs/cross_runtime.md`` for the methodology.
+    """
+    ensure_dirs()
+    _set_quant_engine()
+
+    configs: tuple[str, ...] = config_names or CROSS_RUNTIME_CONFIGS
+
+    fp32 = _load_baseline_model()
+    onnx_dir = WEIGHTS_DIR / "onnx"
+    cal_loader = get_calibration_loader(DATA_DIR, n_images=calibration_n, batch_size=32)
+    artifacts = build_onnx_artifacts(
+        fp32_model=fp32,
+        out_dir=onnx_dir,
+        calibration_loader=cal_loader,
+        configs=configs,
+    )
+
+    test_loader = get_test_loader(DATA_DIR, batch_size=128, subset_size=accuracy_subset)
+    rows = []
+    for name in configs:
+        # PyTorch side: rebuild the quantized graph fresh each time so
+        # neither runtime sees a state cached from the other's pass.
+        def _builder(cfg_name: str = name) -> nn.Module:
+            if cfg_name == "fp32_baseline":
+                return _load_baseline_model()
+            return _build_quantized_model(cfg_name, calibration_n=calibration_n)
+
+        pt_weights = _baseline_path() if name == "fp32_baseline" else _quantized_path(name)
+        pt = measure_pytorch_side(
+            _builder,
+            weights_path=pt_weights,
+            test_loader=test_loader,
+            bench_warmup=warmup,
+            bench_iters=iters,
+        )
+        click.echo(
+            f"[pt]   {name}: top1={pt.top1:.4f} p50={pt.p50_ms_b1:.2f}ms size={pt.size_kb:.0f}kb"
+        )
+
+        # ONNX side.
+        onnx_top1, onnx_p50, n_onnx = measure_onnx_side(
+            onnx_artifact=artifacts[name],
+            test_loader=test_loader,
+            bench_warmup=warmup,
+            bench_iters=iters,
+        )
+        click.echo(
+            f"[onnx] {name}: top1={onnx_top1:.4f} p50={onnx_p50:.2f}ms size={artifacts[name].size_kb:.0f}kb"
+        )
+
+        rows.append(
+            assemble_row(
+                config=name,
+                pt=pt,
+                onnx_top1=onnx_top1,
+                onnx_p50_ms=onnx_p50,
+                onnx_size_kb=artifacts[name].size_kb,
+                n_samples_onnx=n_onnx,
+            )
+        )
+
+    json_path = RESULTS_DIR / "cross_runtime.json"
+    md_path = RESULTS_DIR / "cross_runtime.md"
+    emit_full_results(build_cross_runtime_table(rows), json_path)
+    md_path.write_text(render_cross_runtime_markdown(rows), encoding="utf-8")
+    click.echo(f"wrote {json_path}")
+    click.echo(f"wrote {md_path}")
 
 
 if __name__ == "__main__":

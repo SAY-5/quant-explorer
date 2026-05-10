@@ -16,6 +16,8 @@ dependencies = [
     "click>=8.1",
     "psutil>=5.9",
     "numpy<2",
+    "onnx>=1.15,<1.17",
+    "onnxruntime>=1.17,<1.19",
 ]
 
 [project.optional-dependencies]
@@ -59,7 +61,7 @@ files = ["src/quant_explorer"]
 plugins = []
 
 [[tool.mypy.overrides]]
-module = ["torchvision.*", "torch.*"]
+module = ["torchvision.*", "torch.*", "onnx.*", "onnxruntime.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

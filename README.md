@@ -143,6 +143,9 @@ fp32_baseline.pt
         bench/  latency, memory, size
         eval/   top-1 / top-5 / per-class
                 |
+                +--> onnx_rt/ (FP32 export + ONNX-side INT8 quantization)
+                |            -> ORT CPU EP inference: top-1 + latency
+                |            -> cross_runtime.{json,md}
                 v
         report/ full_results.json + pareto.md
 ```
@@ -195,6 +198,36 @@ network size and quantization aggressiveness — INT4 weight-only QAT
 on a transformer can recover several percentage points where PTQ falls
 off a cliff.
 
+## Cross-runtime: PyTorch quantized vs ONNX Runtime quantized
+
+The same four PTQ configs can be exported to ONNX and benched under
+ONNX Runtime's CPU EP for a head-to-head with the PyTorch quantized
+runtime. `quant-explorer cross-runtime` runs the comparison and writes
+[`artifacts/results/cross_runtime.md`](artifacts/results/cross_runtime.md)
++ `cross_runtime.json`. Numbers from a recent run on a 4-core
+M-series CPU (full 10 000-image test split, 256-image calibration):
+
+| config | pt_top1 | onnx_top1 | top1_delta_pp | pt_p50_ms | onnx_p50_ms | latency_ratio | pt_size_kb | onnx_size_kb |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| fp32_baseline | 82.3% | 82.3% | 0.00 | 1.83 | 0.83 | 0.46x | 1144 | 1129 |
+| dynamic_int8 | 82.3% | 82.3% | 0.00 | 1.14 | 0.38 | 0.33x | 1141 | 1128 |
+| static_int8_per_tensor | 82.1% | 82.1% | -0.05 | 1.77 | 0.18 | 0.10x | 293 | 297 |
+| static_int8_per_channel | 82.0% | 82.3% | +0.27 | 1.27 | 0.18 | 0.14x | 304 | 303 |
+
+What this says: **every config's top-1 agrees across runtimes within
++/-0.3pp** (well inside the +/-1pp structural-parity tolerance we
+assert; static INT8 is lossy by definition so exact bit-parity isn't
+the goal). On-disk size matches to within ~1% per config. Latency is
+where the two runtimes diverge: ORT CPU EP is consistently faster on
+this network (4-10x at INT8) because the ORT CPU INT8 kernels for
+small convolutions are more mature on x86 Linux than PyTorch's
+eager-mode quantized ops.
+
+Methodology + per-runtime export plumbing:
+[`docs/cross_runtime.md`](docs/cross_runtime.md). Cross-linked from
+`SAY-5/onnx-deploy` (consumer of the `.onnx` files) and
+`SAY-5/export-validator` (re-uses the +/-1pp parity gate).
+
 ## What this is not
 
 - **Not INT4 / INT2.** PyTorch's CPU backends don't have first-class
@@ -218,6 +251,7 @@ src/quant_explorer/
   quant/              one module per quantization config; auto-registered
   bench/              latency / memory / size measurement
   eval/               top-1 / top-5 / per-class accuracy
+  onnx_rt/            FP32 export, ONNX-side INT8 quantization, ORT CPU EP bench
   report/             pareto frontier + JSON / Markdown emit
   settings.py         paths, dataclasses, engine selection
 artifacts/
