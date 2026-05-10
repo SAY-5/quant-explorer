@@ -177,9 +177,13 @@ jobs:
           path: data
           key: cifar10-${{ hashFiles('src/quant_explorer/data.py') }}
           restore-keys: cifar10-
-      - name: Cross-runtime comparison (tiny — 500 test images)
+      - name: Cross-runtime comparison (tiny — 2000 test images)
+        # 2000 samples keeps the comparison cheap (~15s) while shrinking
+        # sampling variance enough that the +/-1pp parity gate is a
+        # signal, not noise: on 2k samples, 1pp = 20 disagreements, well
+        # above the typical PT-vs-ORT INT8 quantizer drift.
         run: |
-          quant-explorer cross-runtime --accuracy-subset 500 --calibration-n 64 --warmup 2 --iters 10
+          quant-explorer cross-runtime --accuracy-subset 2000 --calibration-n 128 --warmup 2 --iters 10
       - name: Assert structural parity (top-1 within +/-1pp, all configs)
         run: |
           python - <<'PY'
