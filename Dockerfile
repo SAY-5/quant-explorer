@@ -18,7 +18,7 @@ COPY README.md ./
 RUN python -m pip install --upgrade pip \
  && pip install --index-url https://download.pytorch.org/whl/cpu torch==2.2.2 torchvision==0.17.2 \
  && pip install --no-deps . \
- && pip install click psutil "numpy<2"
+ && pip install click psutil "numpy<2" "onnx>=1.15,<1.17" "onnxruntime>=1.17,<1.19"
 
 FROM python:3.11-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
