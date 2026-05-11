@@ -140,7 +140,7 @@ jobs:
           path: data
           key: cifar10-${{ hashFiles('src/quant_explorer/data.py') }}
           restore-keys: cifar10-
-      - name: QAT fine-tune (tiny — 256 train images, 1 epoch)
+      - name: QAT fine-tune (tiny, 256 train images, 1 epoch)
         run: |
           quant-explorer qat-finetune --epochs 1 --train-subset 256 --batch-size 64
       - name: Bench QAT graph
@@ -177,7 +177,7 @@ jobs:
           path: data
           key: cifar10-${{ hashFiles('src/quant_explorer/data.py') }}
           restore-keys: cifar10-
-      - name: Cross-runtime comparison (tiny — 2000 test images)
+      - name: Cross-runtime comparison (tiny, 2000 test images)
         # 2000 samples keeps the comparison cheap (~15s) while shrinking
         # sampling variance enough that the +/-1pp parity gate is a
         # signal, not noise: on 2k samples, 1pp = 20 disagreements, well
@@ -193,7 +193,7 @@ jobs:
         # from PT eager-mode fbgemm to push the per-channel cell to ~2pp
         # in the CI environment. We gate at +/-5pp here as a regression
         # canary: if the gap widens past 5pp something is structurally
-        # broken (wrong calibration data, missing fusion, etc.) — but the
+        # broken (wrong calibration data, missing fusion, etc.), but the
         # publishable +/-1pp claim lives in the committed full-run.
         run: |
           python - <<'PY'

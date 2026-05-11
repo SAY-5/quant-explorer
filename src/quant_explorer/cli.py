@@ -170,7 +170,7 @@ def _bench_one_config(
         weights_path = _baseline_path()
     else:
         # Re-build the quantized graph from scratch (don't try to load
-        # a quantized state_dict into an FP32 module — the keys won't
+        # a quantized state_dict into an FP32 module, the keys won't
         # line up because static quant rewrites the graph).
         model = _build_quantized_model(name, calibration_n=calibration_n)
         weights_path = _quantized_path(name)
@@ -390,7 +390,7 @@ def multi_bench(
         accuracy_fn = _accuracy
 
         # For accuracy to be meaningful on small_cnn we need the trained
-        # baseline weights — bench_grid otherwise hands the configs a
+        # baseline weights, bench_grid otherwise hands the configs a
         # randomly-initialised CifarCNN.
         def _load_small_cnn_trained(_spec: ModelSpec) -> nn.Module:
             return _load_baseline_model()

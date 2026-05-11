@@ -90,7 +90,7 @@ split**, measured locally on Apple Silicon (qnnpack + ORT CPU EP) and
 committed to `artifacts/results/cross_runtime.{json,md}`. The CI job
 runs on Linux x86 (fbgemm + ORT CPU EP) and on a 2000-image subset; in
 that environment ORT's per-channel static-INT8 calibrator diverges
-from PT eager-mode fbgemm by ~2pp on this small CNN — close enough
+from PT eager-mode fbgemm by ~2pp on this small CNN, close enough
 that something is working, far enough that the 1pp gate isn't a useful
 smoke signal.
 

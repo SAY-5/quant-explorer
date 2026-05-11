@@ -14,8 +14,8 @@ from typing import Any
 
 # A 1pp tolerance window for accuracy parity. Static-INT8 in PyTorch
 # (FBGEMM/QNNPACK eager-mode) and in ONNX Runtime (QDQ format) differ on
-# small numerical details — calibrator algorithm, fold ordering, the
-# exact quantization formula for activations — so exact bit-parity is
+# small numerical details, calibrator algorithm, fold ordering, the
+# exact quantization formula for activations, so exact bit-parity is
 # unrealistic. 1pp is the structural-parity assertion: both backends
 # should land in the same neighbourhood for a well-trained CIFAR-10 CNN.
 ACCURACY_TOL_PP: float = 1.0

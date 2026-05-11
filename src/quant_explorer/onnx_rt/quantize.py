@@ -3,7 +3,7 @@
 The static path mirrors PyTorch's static INT8 PTQ (per-tensor and
 per-channel weight observers, real calibration data). The dynamic path
 restricts quantization to ``MatMul``/``Gemm`` operators to mirror
-PyTorch's dynamic INT8 PTQ — which only quantizes ``nn.Linear``. ONNX
+PyTorch's dynamic INT8 PTQ, which only quantizes ``nn.Linear``. ONNX
 Runtime CPU EP doesn't ship a kernel for ``ConvInteger`` (the op
 ``quantize_dynamic`` emits for convolutions by default), so quantizing
 the full graph dynamically would produce a model that can't run; the

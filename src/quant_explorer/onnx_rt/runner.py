@@ -89,7 +89,7 @@ def build_onnx_artifacts(
     export_fp32_onnx(fp32_model, fp32_onnx)
 
     # Materialize calibration batches once (the static quantizer consumes
-    # the iterator twice for per-tensor + per-channel — collecting up
+    # the iterator twice for per-tensor + per-channel, collecting up
     # front keeps both passes deterministic).
     calibration_arrays = list(_calibration_numpy_batches(calibration_loader))
 
@@ -198,7 +198,7 @@ def assemble_row(
 ) -> CrossRuntimeResult:
     """Materialize one comparison row.
 
-    The number of samples reported is the minimum of the two — if the
+    The number of samples reported is the minimum of the two, if the
     runtimes were fed different-size loaders we want the cross-section
     they share, not the larger of the two.
     """

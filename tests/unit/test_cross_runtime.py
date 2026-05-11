@@ -38,7 +38,7 @@ def _set_engine() -> None:
 
 @pytest.fixture
 def fp32_model() -> CifarCNN:
-    """Untrained but deterministic CifarCNN — fine for parity tests.
+    """Untrained but deterministic CifarCNN, fine for parity tests.
 
     Parity here is structural: the same weights export and run under
     both runtimes, so PT-fp32 and ONNX-fp32 should agree to numerical
@@ -127,7 +127,7 @@ def test_bench_onnx_latency_smoke(tmp_path: Path, fp32_model: CifarCNN) -> None:
 def test_onnx_top1_accuracy_synthetic(tmp_path: Path, fp32_model: CifarCNN) -> None:
     fp32 = tmp_path / "fp32.onnx"
     export_fp32_onnx(fp32_model, fp32)
-    # 16 random images with random labels — accuracy ~ 0.1 for a random
+    # 16 random images with random labels, accuracy ~ 0.1 for a random
     # model on 10-class targets. We only care that the call succeeds
     # and returns a value in [0,1] for n>0.
     rng = np.random.RandomState(7)
@@ -301,6 +301,6 @@ def test_calibration_numpy_batches_yields_float32() -> None:
 
 
 def test_accuracy_tol_pp_is_one_percentage_point() -> None:
-    """Tolerance is a load-bearing constant — encode it in tests so a
+    """Tolerance is a load-bearing constant, encode it in tests so a
     change requires updating the docs and the README simultaneously."""
     assert ACCURACY_TOL_PP == 1.0
